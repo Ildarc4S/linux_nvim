@@ -13,12 +13,13 @@ return {
       "nvim-lua/plenary.nvim",
     },
     config = function()
-      -- Оригинальные настройки Mason и автодополнения остаются без изменений
+      -- Mason setup
       require("mason").setup()
       require("mason-lspconfig").setup({
         ensure_installed = { "clangd" },
       })
 
+      -- nvim-cmp setup
       local cmp = require("cmp")
       cmp.setup({
         mapping = cmp.mapping.preset.insert({
@@ -31,7 +32,7 @@ return {
         }),
       })
 
-      -- Настройка clangd без изменений
+      -- clangd setup
       require("lspconfig").clangd.setup({
         capabilities = require("cmp_nvim_lsp").default_capabilities(),
         cmd = {
@@ -53,12 +54,12 @@ return {
         },
       })
 
-      -- Замена null-ls диагностики (cpplint) на nvim-lint
+      -- nvim-lint с cpplint (по сохранению)
       if vim.fn.executable("cpplint") == 1 then
         require("lint").linters.cpplint = {
           cmd = "cpplint",
           args = {
-            "--filter=-legal/copyright,-build/include_subdir,+whitespace/trailing",
+            "--filter=-legal/copyright,-build/include_subdir",
             "%f"
           },
           stdin = false,
@@ -83,7 +84,7 @@ return {
         })
       end
 
-      -- Замена null-ls форматирования на conform.nvim
+      -- conform.nvim для форматирования clang-format
       require("conform").setup({
         formatters_by_ft = {
           cpp = { "clang_format" },
@@ -94,22 +95,24 @@ return {
         formatters = {
           clang_format = {
             command = "/usr/bin/clang-format",
-            args = { "-style=google", "--assume-filename=%:p" },
+            args = { "-style=google"},
             stdin = true,
           }
         },
       })
 
-      -- Все остальные оригинальные autocmd и настройки остаются без изменений
+      -- Создаем группу для C++ настроек
       local cpp_group = vim.api.nvim_create_augroup("CppConfig", { clear = true })
 
+      -- Подсветка trailing whitespace красным
       vim.api.nvim_set_hl(0, "TrailingWhitespace", { bg = "#ff0000" })
+
       vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
         group = cpp_group,
         pattern = { "*.cpp", "*.hpp", "*.cc", "*.h" },
         callback = function()
           vim.fn.matchadd("TrailingWhitespace", "\\s\\+$")
-        end
+        end,
       })
 
       vim.api.nvim_create_autocmd({ "BufLeave", "WinLeave" }, {
@@ -117,33 +120,35 @@ return {
         pattern = { "*.cpp", "*.hpp", "*.cc", "*.h" },
         callback = function()
           vim.fn.clearmatches()
-        end
+        end,
       })
 
+      -- Диагностика и форматирование при подключении LSP
       vim.api.nvim_create_autocmd("LspAttach", {
         group = cpp_group,
         callback = function(args)
           local client = vim.lsp.get_client_by_id(args.data.client_id)
           if client.name == "clangd" then
-            vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
-              vim.lsp.diagnostic.on_publish_diagnostics, {
-                update_in_insert = true,
-                virtual_text = {
-                  prefix = "■",
-                  spacing = 4,
-                  severity_sort = true,
-                },
-                signs = true,
-                underline = true,
-              }
-            )
+            -- Настройка диагностики через новый API Neovim
+            vim.diagnostic.config({
+              virtual_text = {
+                prefix = "■",
+                spacing = 4,
+                severity_sort = true,
+              },
+              signs = true,
+              underline = true,
+              update_in_insert = true,
+            })
 
+            -- Клавиша для форматирования
             vim.keymap.set('n', '<leader>cf', function()
               require("conform").format({ async = true })
             end, { buffer = args.buf, desc = "Format with Google Style" })
           end
-        end
+        end,
       })
     end,
   },
 }
+
