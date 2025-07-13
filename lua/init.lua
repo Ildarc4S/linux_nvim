@@ -6,4 +6,5 @@ return {
   { import = "plugins.coding" },
   { import = "plugins.telescope" },
   { import = "plugins.terminal" },
+  { import = "plugins.cmake" },
 }

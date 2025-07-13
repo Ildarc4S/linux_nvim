@@ -20,7 +20,7 @@ return {
           type = "server",
           port = "${port}",
           executable = {
-              command = "/usr/bin/codelldb",
+              command = "/usr/bin/gdb",
               args = { "--port", "${port}" },
           },
       }
